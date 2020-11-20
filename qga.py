@@ -2,6 +2,10 @@ from random import choices, randint
 from statistics import mean
 from typing import List
 from tabulate import tabulate
+from tkinter import Tk, Button, Label, Text, StringVar, LEFT, RIGHT,X, Y, BOTH, END
+import pandas
+import matplotlib.pyplot as plt
+
 
 # Global Types
 Chromosome = List[int]
@@ -14,8 +18,9 @@ POPULATION_SIZE = 10
 TARGET_FITNESS = 20
 
 # Global Variables
-generations_stats = []   # Fitness stats of each generation [generation, min, max, mean]
-
+generations_stats = pandas.DataFrame(columns=['Generation', 'Min', 'Max', 'Average'])   # Fitness stats of each generation [generation, min, max, mean]
+window = Tk()
+txt = Text(window, width=40)
 
 # Population Creation
 def random_population() -> Population:
@@ -36,7 +41,7 @@ def population_fitness_stats(epoch: int, pop: Population) -> None:
     fit_array = []
     for chrome in pop:
         fit_array.append(chromosome_fitness(chrome))
-    generations_stats.append([epoch, min(fit_array), max(fit_array), mean(fit_array)])
+    generations_stats.loc[len(generations_stats)] = [epoch, min(fit_array), max(fit_array), mean(fit_array)]    # Append to the end of the dataframe
     #TODO normalization
 
 # Parents Selection
@@ -83,10 +88,58 @@ def eliminate(population: Population) -> None:
         fit_array.append(chromosome_fitness(chrome))
     population.pop(fit_array.index(min(fit_array)))
 
-# Print Stats
-def print_stats() -> None:
-    print(tabulate(generations_stats, headers=['Generation', 'Min', 'Max', 'Average']))
+# Plotting the Stats
+def plot_stats() -> None:
+    if len(generations_stats['Generation']) < 1:
+        # Showing an error message in the text widget
+        txt.delete("1.0", "end")
+        txt.insert(END, 'Please run the simulation first!')
+
+    else:
+        # Show the plot in a new window
+        plt.title('Generations Statistics')
+        plt.plot(generations_stats['Generation'], generations_stats['Min'], 'b.-', label='Min')
+        plt.plot(generations_stats['Generation'], generations_stats['Max'], 'r.-', label='Max')
+        plt.plot(generations_stats['Generation'], generations_stats['Average'], 'g.-', label='Average')
+        plt.xlabel('Generation')
+        plt.ylabel('Fitness')
+        plt.legend()
+        plt.show()
+
+# Running the simulation
+def run_sim() -> None:
+    pop = random_population()
+    global generations_stats
+    generations_stats = pandas.DataFrame(columns=['Generation', 'Min', 'Max', 'Average'])   # Flushing the dataframe from any previous results
+    for i in range(0, MAX_GENERATION):
+        population_fitness_stats(i+1, pop)
+        parents = select_parents(pop)
+        children = crossover(parents)
+        mutate(children[0])
+        mutate(children[1])
+        pop.extend(children)
+        eliminate(pop)
+        eliminate(pop)
+
+        # Termination condition
+        if generations_stats.iloc[i, 2] == 20:
+            break
+    
+    # Output the simulation results in the text widget
+    txt.delete("1.0", "end")
+    stats_string = tabulate(generations_stats, headers=['Generation', 'Min', 'Max', 'Average'], showindex=False)
+    txt.insert(END, stats_string)
+
 
 # Show a Scatterplot of min, max and average Population Fitness over the Generations
-# 
+def gui() -> None:
+    window.geometry('+400+100')
+    txt.grid(rowspan=3, columnspan=2, sticky='nsew')
+    btn1 = Button(window, text='Run', command=run_sim)
+    btn1.grid(row=1, column=2, sticky='nsew')
+    btn2 = Button(window, text='Show Graph', command=plot_stats)
+    btn2.grid(row=2, column=2, sticky='nsew')
+    window.focus()
+    window.mainloop()
+
 
