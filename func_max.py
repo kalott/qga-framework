@@ -133,9 +133,9 @@ class Population:
             List[Chromosome]: a list of two individual candidates for mating
         """
         parents: List[Chromosome] = []
-        parent1 = choices(self.chromosomes, weights=self.fitness_array, k=1)[0]
+        parent1 = choices(self.chromosomes, weights=self.fitness_normalized_array, k=1)[0]
         parents.append(parent1)
-        parent2 = choices(self.chromosomes, weights=self.fitness_array, k=1)[0]
+        parent2 = choices(self.chromosomes, weights=self.fitness_normalized_array, k=1)[0]
         parents.append(parent2)
         return deepcopy(parents)
 
