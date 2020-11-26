@@ -1,4 +1,0 @@
-import qga
-
-
-qga.gui()

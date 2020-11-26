@@ -1,11 +1,25 @@
-from random import choices, random
+from __future__ import annotations      # To overcome NameError when referencing class from within itself
+                                        # e.g. Chromosome.crossover()
+                                        # Should be solved by python 4.0
+from random import randint, choices, random
 from statistics import mean
 from typing import List
 from tabulate import tabulate
-from tkinter import Tk, Button, Label, Text, END
+from tkinter import Tk, Button, Label, Text, END, Entry
 import pandas
 import matplotlib.pyplot as plt
 
+# Constants
+LENGTH = 20     # Length of each chromosome
+MAX_GENERATION = 100
+POPULATION_SIZE = 10
+TARGET_FITNESS = 20
+
+# Global Variables
+generations_population: List[List[Chromosome]] = []     # Saves the population of each generation
+generations_stats = pandas.DataFrame(columns=['Generation', 'Min', 'Max', 'Average'])   # Fitness stats of each generation [generation, min, max, mean]
+window = Tk()
+txt = Text(window, width=70)
 
 # Global Types
 class Chromosome:
@@ -18,6 +32,28 @@ class Chromosome:
         if not isinstance(other, Chromosome):
             return NotImplemented
         return self.genes == other.genes
+    
+    # Crossover
+    def crossover(self, parent: Chromosome) -> List[Chromosome]:
+        copy1 = self.genes.copy()
+        copy2 = parent.genes.copy()
+        if random() < 0.7:
+            locus = randint(1, LENGTH-1)    # the locus at which the crossover occurs
+            genes_copy = self.genes.copy()
+            child1 = Chromosome(copy1[:locus] + copy2[locus:])
+            child2 = Chromosome(copy2[:locus] + genes_copy[locus:])
+            return [child1, child2]
+        else:
+            child1 = Chromosome(copy1)
+            child2 = Chromosome(copy2)
+            return [child1, child2]
+    
+    # Randomly Mutate Genes on the Chromosome
+    def mutate(self) -> None:
+        for i in range(LENGTH):
+            if random() < 0.1:      # Each gene has a 10% probability of mutating
+                self.genes[i] = 0 if self.genes[i] == 1 else 1
+        self.calculate_fitness()
     
     # Chromosome Fitness Calculation
     def calculate_fitness(self) -> None:
@@ -54,26 +90,8 @@ class Population:
         parent1 = choices(self.chromosomes, weights=self.fitness_array, k=1)[0]
         parents.append(parent1)
         parent2 = choices(self.chromosomes, weights=self.fitness_array, k=1)[0]
-        while parent1 == parent2:   # ensuring parents are separate individual
-            parent2 = choices(self.chromosomes, weights=self.fitness_array, k=1)[0]
         parents.append(parent2)
         return parents
-
-    # Crossover
-    def crossover(self, parents: List[Chromosome]) -> List[Chromosome]:
-        children = []
-        child1 = Chromosome(parents[0].genes[0:10] + parents[1].genes[10:])
-        child2 = Chromosome(parents[1].genes[0:10] + parents[0].genes[10:])
-        children.append(child1)
-        children.append(child2)
-        return children
-    
-    # Randomly Mutate Genes on the Chromosome
-    def mutate(self, child: Chromosome) -> None:
-        for i in range(LENGTH):
-            if random() < 0.1:      # Each gene has a 10% probability of mutating
-                child.genes[i] = 0 if child.genes[i] == 1 else 1
-        child.calculate_fitness()
 
     # Eliminating the Weakest Chromosomes from the population
     def eliminate(self) -> None:
@@ -85,16 +103,6 @@ class Population:
         self.chromosomes.append(chrome)
         self.calculate_fitness()
 
-# Constants
-LENGTH = 20     # Length of each chromosome
-MAX_GENERATION = 100
-POPULATION_SIZE = 10
-TARGET_FITNESS = 20
-
-# Global Variables
-generations_stats = pandas.DataFrame(columns=['Generation', 'Min', 'Max', 'Average'])   # Fitness stats of each generation [generation, min, max, mean]
-window = Tk()
-txt = Text(window, width=40)
 
 # Population Fitness Calculations
 def population_fitness_stats(epoch: int, pop: Population) -> None:
@@ -123,16 +131,18 @@ def run_sim() -> None:
     pop = Population()
     pop.random_population()
     global generations_stats
+    global generations_population
+    generations_population = []     # Flushing the variable with each run
     generations_stats = pandas.DataFrame(columns=['Generation', 'Min', 'Max', 'Average'])   # Flushing the dataframe from any previous results
     for i in range(0, MAX_GENERATION):
         population_fitness_stats(i+1, pop)
         parents = pop.select_parents()
-        children = pop.crossover(parents)
-        pop.mutate(children[0])
-        pop.mutate(children[1])
+        children = parents[0].crossover(parents[1])
+        children[0].mutate()
+        children[1].mutate()
         pop.add(children[0])
         pop.add(children[1])
-
+        generations_population.append(pop.chromosomes.copy())
         # Termination condition
         if generations_stats.iloc[i, 2] == 20:
             break
@@ -145,14 +155,43 @@ def run_sim() -> None:
 
 # Show a Scatterplot of min, max and average Population Fitness over the Generations
 def gui() -> None:
+    def show_gen():
+        if not etr.get().isdigit():
+            txt.delete("1.0", "end")
+            txt.insert(END, 'Please run the simulation first,\nthen enter a valid generation number!')
+        else:
+            generation = int(etr.get()) - 1
+            if generation > len(generations_population):
+                txt.delete("1.0", "end")
+                txt.insert(END, 'Please run the simulation first,\nthen enter a valid generation number!')
+            else:
+                text = '\n'
+                for chrome in generations_population[generation]:
+                    text += str(chrome.genes) + '\n'
+                txt.delete("1.0", "end")
+                txt.insert(END, text)
+
     window.geometry('+400+100')
     window.title('Binary String Problem')
-    txt.grid(rowspan=3, columnspan=2, sticky='nsew')
-    btn1 = Button(window, text='Run', command=run_sim)
-    btn1.grid(row=1, column=2, sticky='nsew')
-    btn2 = Button(window, text='Show Graph', command=plot_stats)
-    btn2.grid(row=2, column=2, sticky='nsew')
+    lbl1 = Label(window, text='Results:')
+    lbl1.grid(row=0, columnspan=2, sticky='w')
+    txt.grid(rowspan=4, columnspan=2, sticky='nsew')
+    lbl2 = Label(window, text='Enter generation number:')
+    lbl2.grid(row=0, column=2, sticky='nsew')
+    etr = Entry(window, width=5)
+    etr.grid(row=1, column=2)
+    btn1 = Button(window, text='Show Population', command=show_gen)
+    btn1.grid(row=2, column=2, sticky='n')
+    btn2 = Button(window, text='Run', command=run_sim)
+    btn2.grid(row=3, column=2, sticky='nsew')
+    btn3 = Button(window, text='Show Graph', command=plot_stats)
+    btn3.grid(row=4, column=2, sticky='nsew')
+
     window.focus()
     window.mainloop()
+    
+
+
+
 
 
