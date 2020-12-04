@@ -1,18 +1,21 @@
 from __future__ import annotations      # To overcome NameError when referencing class from within itself
                                         # e.g. Chromosome.crossover(parent: Chromosome)
                                         # Should be solved by Python v4.0 (or 3.10?)
-from random import choices, random, uniform, randint
+from random import choices, random, uniform, randint, seed
 from statistics import mean
 from typing import List, Callable
 from tabulate import tabulate
 from copy import deepcopy
 import pandas
 import matplotlib.pyplot as plt
+from sys import maxsize
 
 # Global Variables
 generations_population = pandas.DataFrame()#columns=['Generation', 'A', 'B', 'C', 'Fitness'])     # Saves the population of each generation
 generations_stats = pandas.DataFrame(columns=['Generation', 'Min', 'Max', 'Average'])   # Fitness stats of each generation [generation, min, max, mean]
 fitness_formula: Callable
+random_seed = randint(0, maxsize)
+seed(random_seed)
 
 # Global Types
 class Chromosome:
@@ -249,6 +252,7 @@ def run_sim(fit_func: Callable, genes_limits: List[List[float]], no_of_generatio
         save_generation_population(i+1, pop)
         population_fitness_stats(i+1, pop)
         # TODO Termination condition
+    print(f'All randomness generated from the seed: {random_seed}')
     
         
     
