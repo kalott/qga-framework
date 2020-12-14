@@ -1,13 +1,12 @@
 from __future__ import annotations      # To overcome NameError when referencing class from within itself
                                         # e.g. Chromosome.crossover(parent: Chromosome)
                                         # Should be solved by Python v4.0 (or 3.10?)
-from random import choices, random, uniform, randint, seed
+from random import choice, choices, random, uniform, randint, seed
 from statistics import mean
 from typing import List, Callable
 from tabulate import tabulate
 from copy import deepcopy
 import pandas
-import matplotlib.pyplot as plt
 from sys import maxsize
 
 # Global Variables
@@ -92,8 +91,23 @@ class Chromosome:
         children.append(child1)
         children.append(child2)
         return children
+        
     
-    # Randomly Mutate Genes on the Chromosome
+    ## Randomly Mutate Genes on the Chromosome (Random approach)
+    # def mutate(self) -> None:
+    #     """Performs the mutation operation on this chromosome instance
+    #     """
+    #     if self.discrete:
+    #         for i in range(len(self.genes)):
+    #             if random() < 0.1:      # Each gene has a 10% probability of mutating
+    #                 self.genes[i] = randint(self.genes_limits[i][0], self.genes_limits[i][1])
+    #     else:
+    #         for i in range(len(self.genes)):
+    #             if random() < 0.1:
+    #                 self.genes[i] = uniform(self.genes_limits[i][0], self.genes_limits[i][1])
+    #     self.calculate_fitness()
+
+    ## Randomly Mutate Genes on the Chromosome (Newtonian approach)
     def mutate(self) -> None:
         """Performs the mutation operation on this chromosome instance
         """
@@ -104,7 +118,19 @@ class Chromosome:
         else:
             for i in range(len(self.genes)):
                 if random() < 0.1:
-                    self.genes[i] = uniform(self.genes_limits[i][0], self.genes_limits[i][1])
+                    # Check whether increasing the gene value or decreasing it produce better fitness
+                    inc_genes = deepcopy(self.genes)
+                    inc_genes[i] += 0.5
+                    dec_genes = deepcopy(self.genes)
+                    dec_genes[i] -= 0.5
+                    inc_chrome = Chromosome(inc_genes, self.genes_limits, self.discrete)
+                    dec_chrome = Chromosome(dec_genes, self.genes_limits, self.discrete)
+
+                    # Perform the mutation in the favorable direction
+                    if inc_chrome.fitness > dec_chrome.fitness:
+                        self.genes[i] = uniform(self.genes[i], self.genes_limits[i][1])
+                    else:
+                        self.genes[i] = uniform(self.genes_limits[i][0], self.genes[i])                    
         self.calculate_fitness()
 
 class Population:
@@ -154,20 +180,60 @@ class Population:
             self.fitness_normalized_array.append(chrome.fitness_normalized)
         
     
-    # Parents Selection
+    # # Parents Selection (Roulette Wheel)
+    # def select_parents(self) -> List[Chromosome]:
+    #     """Selects two chromosomes for mating using roulette wheel selection method
+
+    #     Returns:
+    #         List[Chromosome]: a list of two individual candidates for mating
+    #     """
+    #     parents: List[Chromosome] = []
+    #     parent1 = choices(self.chromosomes, weights=self.fitness_normalized_array, k=1)[0]
+    #     parents.append(parent1)
+    #     parent2 = choices(self.chromosomes, weights=self.fitness_normalized_array, k=1)[0]
+    #     parents.append(parent2)
+    #     return deepcopy(parents)
+
+    # A method to be used locally inside the select_parents() method
+    def get_parent(self) -> Chromosome:
+        """Returns a single individual from the population to be used as a parent
+
+        Returns:
+            Chromosome: the parent candidate
+        """
+        parent1: Chromosome = choice(self.chromosomes)
+        parent2 = choice(self.chromosomes)
+        while parent1 == parent2:   # ensure uniqueness of candidates
+            parent2 = choice(self.chromosomes)
+        if parent1.fitness > parent2.fitness:
+            if random() < 0.75:     # the fitter individual has a 75% chance of being chosen
+                return parent1
+            else:
+                return parent2
+        else:
+            if random() < 0.75:
+                return parent2
+            else:
+                return parent1
+
+    # Parents Selection (Tournament)
     def select_parents(self) -> List[Chromosome]:
-        """Selects two chromosomes for mating using roulette wheel selection method
+        """Selects two chromosomes for mating using tournament selection method
 
         Returns:
             List[Chromosome]: a list of two individual candidates for mating
         """
         parents: List[Chromosome] = []
-        parent1 = choices(self.chromosomes, weights=self.fitness_normalized_array, k=1)[0]
+        parent1 = self.get_parent()
         parents.append(parent1)
-        parent2 = choices(self.chromosomes, weights=self.fitness_normalized_array, k=1)[0]
+        parent2 = self.get_parent()
+        while parent1 == parent2:   # ensure uniqueness of parents
+            parent2 = self.get_parent()
         parents.append(parent2)
         return deepcopy(parents)
     
+    
+
     # Eliminating the Weakest Chromosomes from the population
     def eliminate(self) -> None:
         """Eliminates the individual with lowest fitness score from the population pool
@@ -253,7 +319,7 @@ def run_sim(fit_func: Callable, genes_limits: List[List[float]], no_of_generatio
         population_fitness_stats(i+1, pop)
         # TODO Termination condition
     print(f'All randomness generated from the seed: {random_seed}')
-    
+
         
     
 
