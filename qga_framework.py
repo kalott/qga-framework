@@ -3,6 +3,7 @@ from __future__ import annotations      # To overcome NameError when referencing
                                         # Should be solved by Python v4.0 (or 3.10?)
 from random import choice, choices, random, uniform, randint, seed
 from statistics import mean
+import sys
 from typing import List, Callable
 from tabulate import tabulate
 from copy import deepcopy
@@ -38,7 +39,8 @@ class Chromosome:
         """
         if not isinstance(other, Chromosome):
             return NotImplemented
-        return self.genes == other.genes
+        # return self.genes == other.genes  # if the entire population is identical, it will cause an infinite loop in parent selection
+        return self.genes is other.genes
 
     
     # Chromosome Fitness Calculation
@@ -107,7 +109,60 @@ class Chromosome:
     #                 self.genes[i] = uniform(self.genes_limits[i][0], self.genes_limits[i][1])
     #     self.calculate_fitness()
 
-    ## Randomly Mutate Genes on the Chromosome (Newtonian approach)
+    # # Randomly Mutate Genes on the Chromosome (Binary approach)
+    # def mutate(self) -> None:
+    #     """Performs the mutation operation on this chromosome instance
+    #     """
+    #     def float_to_bin(no: float) -> str:
+    #         int_part_length = 9
+    #         fraction_part_length = 17
+    #         no = round(no, 5)
+    #         negative: bool
+    #         if no > 0:
+    #                 sign = 1
+    #         elif no < 0:
+    #                 sign = 0
+    #                 no *= -1        # Take the sign away
+    #         else:
+    #                 return "000000000000000000000000000"
+    #         int_part, fraction_part = str(no).split(".", 1)
+    #         int_part = f'{int(int_part):b}'
+    #         fraction_part = f'{int(fraction_part):b}'
+    #         int_part_supp = (int_part_length - len(int_part)) * "0"
+    #         fraction_part_supp = (fraction_part_length - len(fraction_part)) * "0"
+    #         return f'{sign}{int_part_supp}{int_part}{fraction_part_supp}{fraction_part}'
+    #     def bin_to_float(no: str) -> float:
+    #         sign = no[:1]
+    #         int_part = no[1:10]
+    #         fraction_part = no[10:]
+    #         int_part = int(int_part, 2)
+    #         fraction_part = int(fraction_part, 2)
+    #         result = float(f'{int_part}.{fraction_part}')
+    #         if sign == 0:
+    #             return result * -1
+    #         else:
+    #             return result
+        
+    #     if self.discrete:
+    #         for i in range(len(self.genes)):
+    #             if random() < 0.1:      # Each gene has a 10% probability of mutating
+    #                 self.genes[i] = randint(self.genes_limits[i][0], self.genes_limits[i][1])
+    #     else:
+    #         for i in range(len(self.genes)):
+    #             if random() < 0.1:
+    #                 binary_gene = list(float_to_bin(self.genes[i]))
+    #                 while True:
+    #                     bin_copy = deepcopy(binary_gene)
+    #                     for j in range(len(bin_copy)):
+    #                         if random() < 0.1:
+    #                             bin_copy[j] = choice(['0', '1'])
+    #                     mutated_gene = bin_to_float(''.join(bin_copy))
+    #                     if mutated_gene >= self.genes_limits[i][0] and mutated_gene <= self.genes_limits[i][1]:
+    #                         self.genes[i] = mutated_gene
+    #                         break
+    #     self.calculate_fitness()
+
+    # Randomly Mutate Genes on the Chromosome (Newtonian approach)
     def mutate(self) -> None:
         """Performs the mutation operation on this chromosome instance
         """
