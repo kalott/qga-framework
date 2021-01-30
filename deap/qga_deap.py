@@ -188,7 +188,7 @@ def main_tsp():
     creator.create("Individual", list, fitness=creator.FitnessMin)
     toolbox = base.Toolbox()
 
-    cities_coords = [(1, 5), (3, 1), (6, 9), (4, 2), (8, 7), (2, 4)]
+    cities_coords = [(1, 5), (3, 1), (6, 9), (4, 2), (8, 7), (2, 4), (9, 3), (7, 7), (5, 2), (1, 7)]
     # def ind_gen():
     #     while True:
     #         coords = deepcopy(cities_coords)
@@ -252,7 +252,7 @@ def main_tsp():
     toolbox.register("mutate", mutTSM, indpb=0.05)
     toolbox.register("select", tools.selTournament, tournsize=10)
 
-    pop = toolbox.population(n=50)
+    pop = toolbox.population(n=20)
     fitnesses = list(map(toolbox.evaluate, pop))
     for ind, fit in zip(pop, fitnesses):
         ind.fitness.values = fit
